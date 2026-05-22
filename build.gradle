@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'local.chat'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+application {
+    mainClass = 'local.chat.ChatServer'
+}
+
+jar {
+    archiveFileName = 'chat-server.jar'
+    manifest {
+        attributes 'Main-Class': application.mainClass.get()
+    }
+}
+
+tasks.register('runnableJar') {
+    dependsOn tasks.named('jar')
+    def outputJar = layout.projectDirectory.file('chat-server.jar')
+    outputs.file(outputJar)
+    doLast {
+        java.nio.file.Files.copy(
+                tasks.named('jar').get().archiveFile.get().asFile.toPath(),
+                outputJar.asFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+
+clean {
+    delete layout.projectDirectory.file('chat-server.jar')
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
+}
+
+test {
+    useJUnitPlatform()
+}

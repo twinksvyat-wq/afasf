@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="local.chat.ChatServerIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-05-21T13:16:31" hostname="EBOBO" time="0.108">
+  <properties/>
+  <testcase name="broadcastsChatMessagesWithNickname()" classname="local.chat.ChatServerIntegrationTest" time="0.058"/>
+  <testcase name="sendsConnectedMessageOnConnect()" classname="local.chat.ChatServerIntegrationTest" time="0.004"/>
+  <testcase name="respondsToPing()" classname="local.chat.ChatServerIntegrationTest" time="0.004"/>
+  <testcase name="rejectsSpamWithinOneSecond()" classname="local.chat.ChatServerIntegrationTest" time="0.011"/>
+  <testcase name="rejectsMessagesLongerThanTwoHundredCharacters()" classname="local.chat.ChatServerIntegrationTest" time="0.009"/>
+  <testcase name="rejectsConnectionsWhenMaximumClientsReached()" classname="local.chat.ChatServerIntegrationTest" time="0.004"/>
+  <testcase name="broadcastsNamedClientDisconnectAndKeepsOtherClientsConnected()" classname="local.chat.ChatServerIntegrationTest" time="0.01"/>
+  <system-out><![CDATA[Chat server listening on port 49485
+Client connected: /127.0.0.1:49486
+Client connected: /127.0.0.1:49487
+Client identified: Alice
+Message from Alice: hello everyone
+Client disconnected: /127.0.0.1:49487
+Client disconnected: Alice
+Chat server listening on port 49488
+Client connected: /127.0.0.1:49489
+Client disconnected: /127.0.0.1:49489
+Chat server listening on port 49490
+Client connected: /127.0.0.1:49491
+Client disconnected: /127.0.0.1:49491
+Chat server listening on port 49492
+Client connected: /127.0.0.1:49493
+Client identified: Alice
+Message from Alice: first
+Rejected spam from Alice
+Client disconnected: Alice
+Chat server listening on port 49494
+Client connected: /127.0.0.1:49495
+Client identified: Alice
+Rejected long message from Alice
+Client disconnected: Alice
+Chat server listening on port 49496
+Client connected: /127.0.0.1:49497
+Rejected connection from /127.0.0.1:49498: server full
+Client disconnected: /127.0.0.1:49497
+Chat server listening on port 49499
+Client connected: /127.0.0.1:49500
+Client connected: /127.0.0.1:49501
+Client identified: Alice
+Client disconnected: Alice
+Client identified: Bob
+Message from Bob: still here
+Client disconnected: Bob
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
