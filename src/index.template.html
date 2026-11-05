@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
+<title>Сетка — таблица из фото и текста</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a0a0a'/%3E%3Cg fill='%23fff'%3E%3Crect x='16' y='16' width='14' height='14' rx='4'/%3E%3Crect x='34' y='16' width='14' height='14' rx='4'/%3E%3Crect x='16' y='34' width='14' height='14' rx='4'/%3E%3Crect x='34' y='34' width='14' height='14' rx='4' opacity='.45'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff; --surface: #f4f4f4; --surface-2: #ebebeb; --line: #e3e3e3; --line-strong: #cfcfcf;
+    --text: #0a0a0a; --muted: #767676; --faint: #a6a6a6;
+    --accent: #0a0a0a; --on-accent: #ffffff;
+    --r-lg: 20px; --r-md: 14px; --r-sm: 10px;
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0b0b; --surface: #161616; --surface-2: #1f1f1f; --line: #262626; --line-strong: #383838;
+      --text: #f2f2f2; --muted: #8d8d8d; --faint: #5c5c5c;
+      --accent: #f2f2f2; --on-accent: #0b0b0b;
+    }
+  }
+  * { box-sizing: border-box; box-shadow: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 4px 22px; }
+  .logo { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 8px; flex: none; }
+  .logo i { background: var(--on-accent); border-radius: 3px; }
+  .logo i:last-child { opacity: .45; }
+  .brand h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -.02em; }
+  .brand p { margin: 0; color: var(--muted); font-size: 13px; }
+  .engine { margin-left: auto; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+  .engine::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .engine.on::before { background: var(--text); }
+
+  .card { background: var(--surface); border-radius: var(--r-lg); padding: 18px; margin-bottom: 14px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-head h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 600; }
+
+  .seg { display: inline-flex; background: var(--bg); border-radius: 999px; padding: 4px; gap: 2px; border: 1px solid var(--line); }
+  .seg button { border: 0; background: transparent; padding: 7px 18px; border-radius: 999px; cursor: pointer; font-weight: 500; color: var(--muted); transition: background .15s, color .15s; }
+  .seg button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+
+  .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 210px; border: 1.5px dashed var(--line-strong); border-radius: var(--r-md); background: var(--bg); text-align: center; padding: 24px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--text); }
+  .drop svg { width: 34px; height: 34px; stroke: var(--text); }
+  .drop strong { font-weight: 600; }
+  .drop span { color: var(--muted); font-size: 13px; }
+  .preview { position: relative; border-radius: var(--r-md); overflow: hidden; background: var(--bg); border: 1px solid var(--line); display: none; }
+  .preview img { display: block; width: 100%; max-height: 380px; object-fit: contain; }
+  .preview .x { position: absolute; top: 10px; right: 10px; }
+  .has-img .drop { display: none; } .has-img .preview { display: block; }
+
+  textarea { width: 100%; min-height: 200px; resize: vertical; border: 1px solid var(--line); background: var(--bg); border-radius: var(--r-md); padding: 14px; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; }
+  textarea::placeholder { color: var(--faint); }
+
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .grow { flex: 1; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
+  .chip[aria-pressed="true"] { border-color: var(--text); color: var(--text); background: var(--bg); font-weight: 500; }
+  .label { font-size: 13px; color: var(--muted); margin-right: 2px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line-strong); background: var(--bg); padding: 10px 16px; border-radius: var(--r-sm); cursor: pointer; font-weight: 500; white-space: nowrap; transition: background .15s, border-color .15s, opacity .15s; }
+  .btn:hover { border-color: var(--text); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn.primary:hover { opacity: .88; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 8px 10px; }
+  .btn.ghost:hover { color: var(--text); background: var(--surface-2); }
+  .btn.icon { padding: 8px; border-radius: 999px; }
+  .btn:disabled { opacity: .4; pointer-events: none; }
+  .btn svg { width: 17px; height: 17px; stroke: currentColor; flex: none; }
+
+  .progress { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 14px; display: none; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--text); border-radius: 3px; transition: width .2s; }
+  .progress.indet i { width: 35%; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+  .status { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 18px; }
+  .status.err { color: var(--text); font-weight: 500; }
+
+  .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; user-select: none; }
+  .switch input { appearance: none; width: 36px; height: 22px; border-radius: 999px; background: var(--line-strong); position: relative; margin: 0; cursor: pointer; transition: background .15s; }
+  .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg); transition: transform .15s; }
+  .switch input:checked { background: var(--accent); }
+  .switch input:checked::after { transform: translateX(14px); background: var(--on-accent); }
+
+  .grid-wrap { overflow: auto; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--bg); max-height: 60vh; }
+  table { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 14px; }
+  th, td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0; text-align: left; vertical-align: top; }
+  thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; font-weight: 500; font-size: 12px; color: var(--muted); font-family: var(--mono); height: 30px; }
+  thead th .col { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 6px 0 10px; height: 30px; }
+  th.num, td.num { width: 40px; min-width: 40px; text-align: center; color: var(--faint); font-family: var(--mono); font-size: 12px; background: var(--surface); position: sticky; left: 0; z-index: 1; }
+  thead th.num { z-index: 3; }
+  td.num { padding-top: 9px; }
+  td .cell { min-width: 120px; max-width: 360px; padding: 8px 10px; outline: none; white-space: pre-wrap; word-break: break-word; min-height: 37px; }
+  td .cell:focus { background: var(--surface); outline: 2px solid var(--text); outline-offset: -2px; }
+  tr.head td .cell { font-weight: 600; }
+  tr.head td:not(.num) { background: var(--surface-2); }
+  .del { border: 0; background: transparent; color: var(--faint); cursor: pointer; width: 20px; height: 20px; border-radius: 6px; display: inline-grid; place-items: center; padding: 0; font-size: 14px; line-height: 1; }
+  .del:hover { color: var(--text); background: var(--surface-2); }
+  td.num .del { display: none; margin: 0 auto; }
+  tr:hover td.num .n { display: none; } tr:hover td.num .del { display: grid; }
+  @media (hover: none) { td.num .n { display: none; } td.num .del { display: grid; } }
+
+  .empty { text-align: center; color: var(--muted); padding: 40px 16px; border: 1.5px dashed var(--line-strong); border-radius: var(--r-md); background: var(--bg); }
+  .empty b { display: block; color: var(--text); font-weight: 600; margin-bottom: 4px; }
+  .file { display: flex; align-items: center; border: 1px solid var(--line-strong); background: var(--bg); border-radius: var(--r-sm); padding: 0 12px; min-width: 0; }
+  .file input { border: 0; background: transparent; outline: none; padding: 10px 0; min-width: 0; width: 100%; }
+  .file span { color: var(--muted); }
+  .file:focus-within { border-color: var(--text); }
+  .meta { font-size: 13px; color: var(--muted); }
+
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); background: var(--accent); color: var(--on-accent); padding: 10px 18px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hidden { display: none !important; }
+  .opts { padding-top: 12px; margin-top: 14px; border-top: 1px solid var(--line); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  footer { text-align: center; color: var(--faint); font-size: 12px; margin-top: 18px; }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 12px 12px 40px; }
+    .card { padding: 14px; border-radius: 18px; }
+    .engine { display: none; }
+    .actions { flex-direction: column; align-items: stretch; }
+    .actions .btn, .actions .file { width: 100%; }
+    .seg { width: 100%; } .seg button { flex: 1; }
+    .btn.ghost .lbl { display: none; }
+    #pane-photo .row .btn.primary { flex: 1; }
+    .card-head .row { gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="brand"><h1>Сетка</h1><p>Таблица Excel из фото или текста</p></div>
+    <div class="engine" id="engine">Проверяю…</div>
+  </header>
+
+  <section class="card" id="src">
+    <div class="card-head">
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="photo">Фото</button>
+        <button role="tab" aria-selected="false" data-tab="text">Текст</button>
+      </div>
+    </div>
+
+    <div id="pane-photo">
+      <div id="photoBox">
+        <label class="drop" id="drop" for="fileGallery">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="4"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8.5 5l1.2-2h4.6l1.2 2"/></svg>
+          <strong>Перетащите любое фото</strong>
+          <span>таблица, записи от руки, счёт 1-3, список, чек · можно вставить скриншот через Ctrl+V</span>
+        </label>
+        <div class="preview" id="preview">
+          <img id="previewImg" alt="Выбранное фото">
+          <button class="btn icon x" id="clearImg" title="Убрать фото" aria-label="Убрать фото"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="label">Что на фото</span>
+        <div class="chips" id="kinds">
+          <button class="chip" data-k="auto" aria-pressed="true">Авто</button>
+          <button class="chip" data-k="table" aria-pressed="false">Таблица</button>
+          <button class="chip" data-k="free" aria-pressed="false">Записи, счёт, список</button>
+        </div>
+      </div>
+      <input type="file" id="fileGallery" accept="image/*" class="sr">
+      <input type="file" id="fileCamera" accept="image/*" capture="environment" class="sr">
+      <div class="row">
+        <button class="btn" id="btnCamera"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="4"/><circle cx="12" cy="13" r="3.5"/></svg>Камера</button>
+        <button class="btn" id="btnGallery"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>Галерея</button>
+        <span class="grow"></span>
+        <select id="lang" class="btn" title="Язык распознавания" aria-label="Язык распознавания">
+          <option value="rus+eng">Рус + Eng</option>
+          <option value="rus">Русский</option>
+          <option value="eng">English</option>
+          <option value="ukr+eng">Укр + Eng</option>
+        </select>
+        <button class="btn primary" id="btnOcr" disabled>Распознать</button>
+      </div>
+    </div>
+
+    <div id="pane-text" class="hidden">
+      <textarea id="text" spellcheck="false" placeholder="Вставьте текст: строки из Excel, CSV, таблицу из Markdown или просто список.&#10;&#10;Имя;Город;Сумма&#10;Иван;Москва;1 200,50&#10;Ольга;Казань;980"></textarea>
+      <div class="row">
+        <span class="label">Разделитель</span>
+        <div class="chips" id="delims">
+          <button class="chip" data-d="auto" aria-pressed="true">Авто</button>
+          <button class="chip" data-d="tab" aria-pressed="false">Tab</button>
+          <button class="chip" data-d="semicolon" aria-pressed="false">;</button>
+          <button class="chip" data-d="comma" aria-pressed="false">,</button>
+          <button class="chip" data-d="pipe" aria-pressed="false">|</button>
+          <button class="chip" data-d="spaces" aria-pressed="false">Пробелы</button>
+          <button class="chip" data-d="free" aria-pressed="false">Записи 1-3</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="grow"></span>
+        <button class="btn hidden" id="btnAiText" title="Для свободного текста без разделителей">Разобрать умно</button>
+        <button class="btn primary" id="btnParse">Собрать таблицу</button>
+      </div>
+    </div>
+
+    <div class="row opts">
+      <label class="switch"><input type="checkbox" id="splitPairs" checked> Делить «1-3» на два столбца</label>
+    </div>
+    <div class="progress" id="progress"><i></i></div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Таблица</h2>
+      <div class="row" style="margin:0">
+        <label class="switch"><input type="checkbox" id="hdr" checked> Заголовки</label>
+        <button class="btn ghost" id="addRow" title="Добавить строку"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Строка</span></button>
+        <button class="btn ghost" id="addCol" title="Добавить столбец"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Столбец</span></button>
+        <button class="btn ghost" id="clear" title="Очистить таблицу"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+      </div>
+    </div>
+    <div id="empty" class="empty"><b>Здесь появится таблица</b>Распознайте фото или вставьте текст — ячейки можно править прямо здесь</div>
+    <div class="grid-wrap hidden" id="gridWrap"><table id="grid"></table></div>
+    <div class="row actions" style="margin-top:14px">
+      <span class="meta" id="meta"></span>
+      <span class="grow"></span>
+      <div class="file"><input id="fname" value="таблица" aria-label="Имя файла"><span>.xlsx</span></div>
+      <button class="btn" id="btnCopy" disabled><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Копировать</button>
+      <button class="btn primary" id="btnSave" disabled><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Скачать .xlsx</button>
+    </div>
+  </section>
+  <footer>Сетка · данные обрабатываются на вашем устройстве<span id="footAi"></span></footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/*CORE*/
+</script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const S = { rows: [], header: true, delim: 'auto', kind: 'auto', splitPairs: true, image: null, ai: null, aiImages: false, dl: null, tess: null, tessLang: null };
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem('setka.' + k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('setka.' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  /* ---------- UI helpers ---------- */
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+  function status(msg, err) { const s = $('status'); s.textContent = msg || ''; s.classList.toggle('err', !!err); }
+  function progress(p) {
+    const el = $('progress');
+    if (p === false) { el.style.display = 'none'; el.classList.remove('indet'); return; }
+    el.style.display = 'block';
+    if (p == null) { el.classList.add('indet'); el.firstElementChild.style.width = ''; }
+    else { el.classList.remove('indet'); el.firstElementChild.style.width = Math.round(p * 100) + '%'; }
+  }
+  function busy(on) { ['btnOcr', 'btnParse', 'btnAiText'].forEach(id => { $(id).disabled = on || (id === 'btnOcr' && !S.image); }); }
+
+  /* ---------- Вкладки ---------- */
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  function setTab(t) {
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    $('pane-photo').classList.toggle('hidden', t !== 'photo');
+    $('pane-text').classList.toggle('hidden', t !== 'text');
+    store.set('tab', t);
+  }
+
+  /* ---------- Фото ---------- */
+  const isTouch = matchMedia('(hover: none)').matches;
+  if (!isTouch) $('btnCamera').classList.add('hidden');
+  $('btnCamera').onclick = () => $('fileCamera').click();
+  $('btnGallery').onclick = () => $('fileGallery').click();
+  ['fileCamera', 'fileGallery'].forEach(id => $(id).addEventListener('change', e => { const f = e.target.files[0]; if (f) setImage(f); e.target.value = ''; }));
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) setImage(f); });
+  document.addEventListener('paste', e => {
+    const item = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith('image/'));
+    if (item) { e.preventDefault(); setTab('photo'); setImage(item.getAsFile()); }
+  });
+  $('clearImg').onclick = () => { S.image = null; $('photoBox').classList.remove('has-img'); $('btnOcr').disabled = true; status(''); };
+  function setImage(file) {
+    S.image = file;
+    const url = URL.createObjectURL(file);
+    $('previewImg').src = url;
+    $('photoBox').classList.add('has-img');
+    $('btnOcr').disabled = false;
+    status('Фото готово — нажмите «Распознать»');
+  }
+
+  function loadImage(file) {
+    return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = () => rej(new Error('Не удалось открыть изображение')); img.src = URL.createObjectURL(file); });
+  }
+  async function prepCanvas(file, maxSide, minSide, gray) {
+    const img = await loadImage(file);
+    let w = img.naturalWidth, h = img.naturalHeight;
+    let k = Math.min(1, maxSide / Math.max(w, h));
+    if (minSide && Math.max(w, h) * k < minSide) k = minSide / Math.max(w, h);
+    const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high';
+    if (gray) ctx.filter = 'grayscale(1) contrast(1.25)';
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  }
+  const canvasBlob = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+
+  $('btnOcr').onclick = async () => {
+    if (!S.image) return;
+    busy(true); status(''); progress(null);
+    try {
+      let rows;
+      if (S.ai && S.aiImages) rows = await ocrWithClaude(S.image);
+      else rows = await ocrWithTesseract(S.image);
+      if (!rows.length) throw new Error('Текст на фото не найден');
+      setRows(rows, 'Распознано');
+    } catch (e) {
+      console.error(e); status(errText(e), true);
+    } finally { progress(false); busy(false); }
+  };
+
+  function promptImg() {
+    const pairs = S.splitPairs
+      ? 'Пары чисел вида 1-3, 4:3 (счёт, результаты) раздели на два отдельных столбца: "1" и "3". '
+      : 'Пары чисел вида 1-3, 4:3 оставляй одной ячейкой как написано: "1-3". ';
+    const common = 'Сохраняй текст точно как на фото: не переводи, не исправляй, ничего не считай и не добавляй. Неразборчивое слово оставь как прочиталось. ' + pairs +
+      'Ответь ТОЛЬКО JSON без пояснений: {"header": true|false, "rows": [["…","…"], …]}. header=true, только если первая строка — заголовки, которые есть на фото.';
+    if (S.kind === 'table') return 'На фото таблица. Извлеки её: столбцы и строки как на фото, объединённые ячейки не повторяй — пустая строка "". ' + common;
+    if (S.kind === 'free') return 'На фото не таблица, а записи: заметки от руки, счёт игр (например 1-3 4-3), список, чек и т. п. ' +
+      'Перенеси ВСЁ содержимое в таблицу: каждая запись — отдельная строка, однородные части записей (имя, команда, счёт, сумма, дата) — в одних и тех же столбцах. Если несколько записей написаны в одну строку через пробел или запятую — это разные строки таблицы. ' + common;
+    return 'На фото может быть что угодно: таблица, заметки от руки, счёт игр (например 1-3 4-3), список, чек. ' +
+      'Если это таблица — повтори её столбцы. Иначе перенеси ВСЁ содержимое в таблицу: каждая запись — отдельная строка, однородные части записей — в одних и тех же столбцах. ' + common;
+  }
+  const PROMPT_TXT = 'Преобразуй текст ниже в таблицу. Определи разумные столбцы, первая строка — короткие заголовки. ' +
+    'Не выдумывай данных, которых нет в тексте; отсутствующее оставь пустой строкой "". Ответь ТОЛЬКО JSON: {"rows":[["…"]]}\n\nТекст:\n';
+
+  async function ocrWithClaude(file) {
+    status('Распознаю таблицу…');
+    const c = await prepCanvas(file, 1800, 0, false);
+    const blob = await canvasBlob(c, 'image/jpeg', 0.88);
+    const res = await S.ai(promptImg(), { images: [blob], modelTier: 'default', onText: () => status('Распознаю таблицу… почти готово') });
+    const rows = Core.extractRows(res.text);
+    if (typeof rows.header === 'boolean') { S.header = rows.header; $('hdr').checked = rows.header; }
+    return rows;
+  }
+
+  function loadScript(src) {
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('offline')); document.head.appendChild(s); });
+  }
+  async function ocrWithTesseract(file) {
+    const lang = $('lang').value;
+    if (!window.Tesseract) { status('Загружаю модуль распознавания…'); await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'); }
+    if (!S.tess || S.tessLang !== lang) {
+      if (S.tess) { try { await S.tess.terminate(); } catch (e) {} }
+      status('Загружаю языковую модель (только в первый раз)…');
+      S.tess = await Tesseract.createWorker(lang, 1, {
+        logger: m => {
+          if (m.status === 'recognizing text') { progress(m.progress); status('Распознаю… ' + Math.round(m.progress * 100) + '%'); }
+          else if (typeof m.progress === 'number' && /load/i.test(m.status)) { progress(m.progress); }
+        }
+      });
+      S.tessLang = lang;
+    }
+    // 6 — сплошной блок (таблицы), 4 — колонка текста разного размера (записи, списки)
+    await S.tess.setParameters({ tessedit_pageseg_mode: S.kind === 'free' ? '4' : '6', preserve_interword_spaces: '1' });
+    const c = await prepCanvas(file, 3200, 1600, true);
+    status('Распознаю…');
+    const { data } = await S.tess.recognize(c);
+    const lines = data.lines || [];
+    const text = Core.ocrText(lines) || data.text || '';
+    const opts = { splitPairs: S.splitPairs };
+    let kind = S.kind;
+    if (kind === 'auto') {
+      const ls = text.split('\n').filter(l => l.trim());
+      kind = ls.length && ls.filter(Core.hasPair).length >= ls.length * 0.4 ? 'free' : 'table';
+    }
+    let rows = kind === 'free' ? Core.structureFree(text, opts) : Core.ocrToRows(lines);
+    if (!rows.length && text) rows = Core.parseText(text, 'auto', opts).rows;
+    if (kind === 'free') { S.header = false; $('hdr').checked = false; }
+    return rows;
+  }
+
+  function errText(e) {
+    if (!e) return 'Что-то пошло не так';
+    if (e.message === 'offline') return 'Нет подключения к интернету: модуль распознавания фото загружается из сети при первом запуске';
+    if (e.code === 'rate_limited') return 'Слишком много запросов подряд — подождите минуту';
+    if (e.code === 'not_granted') return 'Распознавание не разрешено. Разрешите доступ и попробуйте снова';
+    return e.message || String(e);
+  }
+
+  /* ---------- Текст ---------- */
+  $('delims').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    S.delim = b.dataset.d;
+    $('delims').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+  });
+  $('kinds').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    S.kind = b.dataset.k; store.set('kind', S.kind);
+    $('kinds').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+  });
+  $('splitPairs').onchange = e => { S.splitPairs = e.target.checked; store.set('split', S.splitPairs); };
+  const names = { tab: 'табуляция', semicolon: 'точка с запятой', comma: 'запятая', pipe: 'вертикальная черта', spaces: 'пробелы', single: 'пробел', none: 'без разделителя', free: 'записи' };
+  $('btnParse').onclick = () => {
+    const t = $('text').value;
+    if (!t.trim()) { status('Вставьте текст', true); $('text').focus(); return; }
+    const r = Core.parseText(t, S.delim, { splitPairs: S.splitPairs });
+    store.set('text', t);
+    if (r.delimiter === 'free') { S.header = false; $('hdr').checked = false; }
+    setRows(r.rows, 'Готово · ' + (r.delimiter === 'free' ? 'распознаны записи' : 'разделитель: ' + (names[r.delimiter] || r.delimiter)));
+    if (r.delimiter === 'none' && S.ai) status('Разделитель не найден — попробуйте «Разобрать умно»');
+  };
+  $('btnAiText').onclick = async () => {
+    const t = $('text').value;
+    if (!t.trim()) { status('Вставьте текст', true); return; }
+    busy(true); progress(null); status('Разбираю текст…');
+    try {
+      const res = await S.ai(PROMPT_TXT.replace('Ответь', (S.splitPairs ? 'Пары чисел вида 1-3 раздели на два столбца. ' : 'Пары вида 1-3 оставь одной ячейкой. ') + 'Ответь') + t.slice(0, 60000), { modelTier: 'default' });
+      const rows = Core.extractRows(res.text);
+      if (!rows.length) throw new Error('Не получилось собрать таблицу');
+      setRows(rows, 'Готово');
+    } catch (e) { status(errText(e), true); } finally { progress(false); busy(false); }
+  };
+
+  /* ---------- Таблица ---------- */
+  function setRows(rows, msg) {
+    S.rows = Core.normalize(rows);
+    render(); save();
+    if (msg) status(msg + ' · ' + S.rows.length + ' × ' + (S.rows[0] || []).length);
+    if (innerWidth < 760) $('gridWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function width() { return Math.max(0, ...S.rows.map(r => r.length)); }
+  function render() {
+    const w = width(), has = S.rows.length > 0 && w > 0;
+    $('empty').classList.toggle('hidden', has);
+    $('gridWrap').classList.toggle('hidden', !has);
+    $('btnSave').disabled = $('btnCopy').disabled = !has;
+    $('meta').textContent = has ? S.rows.length + ' стр. · ' + w + ' столб.' : '';
+    if (!has) { $('grid').innerHTML = ''; return; }
+    const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    let h = '<thead><tr><th class="num"></th>';
+    for (let j = 0; j < w; j++) h += `<th><div class="col">${Core.colName(j)}<button class="del" data-dc="${j}" title="Удалить столбец" aria-label="Удалить столбец ${Core.colName(j)}">×</button></div></th>`;
+    h += '</tr></thead><tbody>';
+    S.rows.forEach((r, i) => {
+      h += `<tr class="${S.header && i === 0 ? 'head' : ''}"><td class="num"><span class="n">${i + 1}</span><button class="del" data-dr="${i}" title="Удалить строку" aria-label="Удалить строку ${i + 1}">×</button></td>`;
+      for (let j = 0; j < w; j++) h += `<td><div class="cell" contenteditable="plaintext-only" spellcheck="false" data-r="${i}" data-c="${j}">${esc(r[j] || '')}</div></td>`;
+      h += '</tr>';
+    });
+    $('grid').innerHTML = h + '</tbody>';
+  }
+  $('grid').addEventListener('input', e => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    S.rows[+c.dataset.r][+c.dataset.c] = c.innerText.replace(/\n$/, '');
+    saveSoon();
+  });
+  $('grid').addEventListener('keydown', e => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const next = $('grid').querySelector(`.cell[data-r="${+c.dataset.r + 1}"][data-c="${c.dataset.c}"]`);
+      if (next) focusCell(next); else c.blur();
+    }
+  });
+  function focusCell(el) { el.focus(); const s = getSelection(), r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); }
+  $('grid').addEventListener('click', e => {
+    const b = e.target.closest('.del'); if (!b) return;
+    if (b.dataset.dr != null) S.rows.splice(+b.dataset.dr, 1);
+    else { const j = +b.dataset.dc; S.rows.forEach(r => r.splice(j, 1)); if (!width()) S.rows = []; }
+    render(); save();
+  });
+  // вставка в ячейку — только текст; многострочная вставка из Excel раскладывается по ячейкам
+  $('grid').addEventListener('paste', e => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    const t = (e.clipboardData || window.clipboardData).getData('text/plain');
+    e.preventDefault(); e.stopPropagation();
+    if (!/[\t\n]/.test(t.trim())) { document.execCommand('insertText', false, t); return; }
+    const block = Core.parseText(t, 'tab').rows, r0 = +c.dataset.r, c0 = +c.dataset.c;
+    block.forEach((row, i) => row.forEach((v, j) => {
+      while (S.rows.length <= r0 + i) S.rows.push([]);
+      const r = S.rows[r0 + i]; while (r.length <= c0 + j) r.push(''); r[c0 + j] = v;
+    }));
+    S.rows = Core.normalize(S.rows.map(r => r.length ? r : [''])) ; render(); save();
+  });
+  $('addRow').onclick = () => { const w = Math.max(1, width()); S.rows.push(Array(w).fill('')); render(); save(); focusCell($('grid').querySelector(`.cell[data-r="${S.rows.length - 1}"][data-c="0"]`)); };
+  $('addCol').onclick = () => { if (!S.rows.length) S.rows.push(['']); else S.rows.forEach(r => r.push('')); render(); save(); };
+  $('clear').onclick = () => { if (!S.rows.length) return; const prev = S.rows; S.rows = []; render(); save(); undoToast(prev); };
+  function undoToast(prev) {
+    const t = $('toast'); t.innerHTML = 'Таблица очищена · <u style="cursor:pointer">вернуть</u>'; t.classList.add('show'); t.style.pointerEvents = 'auto';
+    t.onclick = () => { S.rows = prev; render(); save(); t.classList.remove('show'); t.style.pointerEvents = ''; };
+    clearTimeout(toastT); toastT = setTimeout(() => { t.classList.remove('show'); t.style.pointerEvents = ''; t.onclick = null; }, 4000);
+  }
+  $('hdr').onchange = e => { S.header = e.target.checked; render(); store.set('header', S.header); };
+
+  let saveT; function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 400); }
+  function save() { store.set('rows', S.rows); }
+
+  /* ---------- Экспорт ---------- */
+  function fileName() { return (($('fname').value || 'таблица').trim().replace(/[\\/:*?"<>|]+/g, ' ').replace(/\.xlsx$/i, '') || 'таблица') + '.xlsx'; }
+  $('fname').addEventListener('change', () => store.set('fname', $('fname').value));
+  $('btnSave').onclick = async () => {
+    const rows = Core.normalize(S.rows);
+    if (!rows.length) return;
+    const bytes = Core.buildXlsx(rows, { header: S.header });
+    const name = fileName();
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    try {
+      if (S.dl) {
+        await S.dl.save({ filename: name, data: blob });
+        toast('Файл сохранён'); return;
+      }
+      const cap = window.Capacitor;
+      if (cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins.Filesystem) {
+        const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+        const w = await cap.Plugins.Filesystem.writeFile({ path: name, data: b64, directory: 'CACHE' });
+        if (cap.Plugins.Share) await cap.Plugins.Share.share({ title: name, url: w.uri, dialogTitle: 'Сохранить или отправить таблицу' });
+        toast('Файл готов'); return;
+      }
+      if (isTouch && navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: blob.type })] })) {
+        try { await navigator.share({ files: [new File([blob], name, { type: blob.type })], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('Файл скачан — ' + name);
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+      status('Не удалось сохранить: ' + errText(e), true);
+    }
+  };
+  $('btnCopy').onclick = async () => {
+    const tsv = Core.toTSV(Core.normalize(S.rows));
+    try { await navigator.clipboard.writeText(tsv); toast('Скопировано — вставьте в Excel'); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = tsv; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('Скопировано — вставьте в Excel'); } catch (e2) { status('Копирование недоступно', true); }
+      ta.remove();
+    }
+  };
+
+  /* ---------- Возможности среды ---------- */
+  function setEngine() {
+    const el = $('engine');
+    if (S.ai && S.aiImages) { el.textContent = 'Распознаёт Claude'; el.classList.add('on'); $('footAi').textContent = ' · фото распознаёт Claude'; $('lang').classList.add('hidden'); }
+    else { el.textContent = 'Распознавание на устройстве'; el.classList.add('on'); $('footAi').textContent = ''; $('lang').classList.remove('hidden'); }
+    $('btnAiText').classList.toggle('hidden', !S.ai);
+  }
+  async function detect() {
+    setEngine();
+    if (!(window.claude && typeof window.claude.use === 'function')) return;
+    try {
+      const [ai, dl] = await Promise.all([window.claude.use('sample').catch(() => null), window.claude.use('downloads').catch(() => null)]);
+      S.ai = ai; S.dl = dl;
+      if (ai && ai.limits) { try { S.aiImages = !!(await ai.limits()).images; } catch (e) { S.aiImages = false; } }
+    } catch (e) {}
+    setEngine();
+  }
+
+  /* ---------- Десктоп-обёртка (Windows): держим связь, чтобы приложение закрывалось вместе с окном ---------- */
+  if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.port && window.EventSource) { try { new EventSource('/alive'); } catch (e) {} }
+
+  /* ---------- Старт ---------- */
+  const savedRows = store.get('rows'); if (Array.isArray(savedRows)) S.rows = savedRows;
+  const h = store.get('header'); if (typeof h === 'boolean') { S.header = h; $('hdr').checked = h; }
+  const fn = store.get('fname'); if (fn) $('fname').value = fn;
+  const tx = store.get('text'); if (tx) $('text').value = tx;
+  const k = store.get('kind'); if (k) { S.kind = k; $('kinds').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.k === k))); }
+  const sp = store.get('split'); if (typeof sp === 'boolean') { S.splitPairs = sp; $('splitPairs').checked = sp; }
+  setTab(store.get('tab') || 'photo');
+  render(); detect();
+})();
+</script>
+</body>
+</html>

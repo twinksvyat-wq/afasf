@@ -1,0 +1,7 @@
+out/
+test/
+dist/
+mobile/node_modules/
+mobile/android/
+mobile/ios/
+desktop/build/

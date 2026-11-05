@@ -1,0 +1,23 @@
+{
+  "name": "setka-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Сетка — таблица Excel из фото или текста (Android / iOS)",
+  "scripts": {
+    "android": "npx cap add android && npx cap sync android",
+    "ios": "npx cap add ios && npx cap sync ios",
+    "icons": "npx @capacitor/assets generate --iconBackgroundColor '#0a0a0a' --iconBackgroundColorDark '#0a0a0a' --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#0b0b0b'",
+    "sync": "npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  }
+}

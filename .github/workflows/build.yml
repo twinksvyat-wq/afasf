@@ -1,0 +1,76 @@
+name: Сборка Сетки
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows (.exe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.24' }
+      - run: node build.js
+      - name: Иконка и сборка exe
+        run: |
+          (cd tools/mksyso && go run . ../../desktop/rsrc_windows_amd64.syso ../../assets/icon-{16,24,32,48,64,256}.png)
+          cd desktop && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H windowsgui" -o ../Setka.exe .
+      - uses: actions/upload-artifact@v4
+        with: { name: Setka-Windows, path: Setka.exe }
+
+  android:
+    name: Android (.apk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - run: node build.js
+      - name: Проект Android
+        working-directory: mobile
+        run: |
+          npm install
+          npx cap add android
+          npm run icons || echo "иконки пропущены"
+          npx cap sync android
+      - name: Сборка APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk Setka.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: Setka-Android, path: Setka.apk }
+
+  ios:
+    name: iOS (.ipa без подписи)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node build.js
+      - name: Проект iOS
+        working-directory: mobile
+        run: |
+          npm install
+          npx cap add ios
+          npm run icons || echo "иконки пропущены"
+          npx cap sync ios
+          PL=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Камера нужна, чтобы сфотографировать таблицу'" $PL || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Доступ к фото нужен, чтобы выбрать снимок таблицы'" $PL || true
+      - name: Сборка
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir -p Payload && cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr ../../../Setka-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with: { name: Setka-iOS-unsigned, path: Setka-unsigned.ipa }

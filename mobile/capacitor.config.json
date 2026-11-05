@@ -1,0 +1,12 @@
+{
+  "appId": "ru.setka.app",
+  "appName": "Сетка",
+  "webDir": "www",
+  "backgroundColor": "#ffffff",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never"
+  }
+}
