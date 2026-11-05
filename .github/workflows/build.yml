@@ -74,3 +74,21 @@ jobs:
           zip -qr ../../../Setka-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with: { name: Setka-iOS-unsigned, path: Setka-unsigned.ipa }
+
+  publish:
+    name: Готовые файлы → ветка setka-builds
+    needs: [windows, android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: Публикация
+        run: |
+          cd out
+          ls -la
+          git init -q && git checkout -q -b setka-builds
+          git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Сборка ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" setka-builds
