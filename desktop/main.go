@@ -103,7 +103,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		for _, h := range []string{"Content-Type", "Authorization", "X-Api-Key", "Anthropic-Version", "Anthropic-Beta", "Anthropic-Dangerous-Direct-Browser-Access", "Http-Referer", "X-Title"} {
+		for _, h := range []string{"Content-Type", "Authorization", "X-Api-Key", "Anthropic-Version", "Anthropic-Beta", "Anthropic-Dangerous-Direct-Browser-Access", "X-Goog-Api-Key", "Http-Referer", "X-Title"} {
 			if v := r.Header.Get(h); v != "" {
 				req.Header.Set(h, v)
 			}

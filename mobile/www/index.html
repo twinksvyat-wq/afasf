@@ -165,6 +165,7 @@
     </div>
     <div class="chips" id="providers">
       <button class="chip" data-p="local" aria-pressed="true">На устройстве</button>
+      <button class="chip" data-p="gemini" aria-pressed="false">Google Gemini</button>
       <button class="chip" data-p="anthropic" aria-pressed="false">Claude API</button>
       <button class="chip" data-p="openai" aria-pressed="false">Другой сервис (OpenAI-совместимый)</button>
     </div>
@@ -981,13 +982,15 @@ ${header ? `<autoFilter ref="A1:${last}"/>` : ''}
 
   /* ---------- Подключение модели по API (для приложений вне claude.ai) ---------- */
   const PROV = {
+    gemini: { base: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3.6-flash', label: 'Gemini',
+      hint: 'Ключ из Google AI Studio (aistudio.google.com) — подходят и новые ключи AQ., и старые AIza. Хорошо читает таблицы, скриншоты и записи от руки. Оплата и бесплатные лимиты — по условиям Google. В некоторых странах API недоступен — тогда нужен VPN или свой прокси в поле «Адрес API».' },
     anthropic: { base: 'https://api.anthropic.com', model: 'claude-sonnet-5-5', label: 'Claude API',
       hint: 'Лучшее качество для таблиц, записей от руки и скриншотов. Ключ создаётся в console.anthropic.com, оплата — по тарифу Anthropic за использование. Если сервис недоступен в вашей стране, укажите адрес своего прокси.' },
     openai: { base: 'https://openrouter.ai/api/v1', model: '', label: 'API',
       hint: 'Любой сервис с OpenAI-совместимым API и моделью, которая понимает изображения: OpenRouter, OpenAI, локальная модель и т. п. Укажите адрес API, ключ и название модели как у провайдера.' },
     local: { hint: 'Tesseract — классическое распознавание текста прямо на устройстве, без интернета после первой загрузки. Подходит для чёткого печатного текста; мелкие, цветные и рукописные таблицы читает плохо.' }
   };
-  let cfg = store.get('api') || { provider: 'local', anthropic: {}, openai: {} };
+  let cfg = store.get('api') || { provider: 'local', gemini: {}, anthropic: {}, openai: {} };
   let draftProv = cfg.provider;
   const isDesktop = /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && !!location.port;
 
@@ -1007,7 +1010,13 @@ ${header ? `<autoFilter ref="A1:${last}"/>` : ''}
       opts = opts || {};
       const imgs = await Promise.all((opts.images || []).map(async b => ({ type: b.type || 'image/jpeg', data: await blobToB64(b) })));
       let res, url, body, headers;
-      if (p === 'anthropic') {
+      if (p === 'gemini') {
+        url = base + '/models/' + encodeURIComponent(model) + ':generateContent';
+        headers = { 'content-type': 'application/json', 'x-goog-api-key': key };
+        body = { contents: [{ role: 'user', parts: [
+          ...imgs.map(i => ({ inline_data: { mime_type: i.type, data: i.data } })),
+          { text: prompt }] }], generationConfig: { maxOutputTokens: 16000, temperature: 0 } };
+      } else if (p === 'anthropic') {
         url = base + '/v1/messages';
         headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
         body = { model, max_tokens: 16000, messages: [{ role: 'user', content: [
@@ -1025,13 +1034,20 @@ ${header ? `<autoFilter ref="A1:${last}"/>` : ''}
       const txt = await res.text(); let j = null; try { j = JSON.parse(txt); } catch (e) {}
       if (!res.ok) {
         const m = (j && (j.error && (j.error.message || j.error) || j.message)) || txt.slice(0, 200);
-        if (res.status === 401) throw new Error('Ключ API не подошёл (401)');
+        if (/location is not supported/i.test(String(m))) throw new Error('Google не обслуживает вашу страну — включите VPN или укажите прокси в поле «Адрес API»');
+        if (res.status === 401 || /API key not valid|API_KEY_INVALID/i.test(String(m))) throw new Error('Ключ API не подошёл (' + res.status + ')');
+        if (res.status === 404 && p === 'gemini') throw new Error('Модель «' + model + '» не найдена — проверьте название');
         if (res.status === 403) throw new Error('Доступ запрещён (403): ' + m);
         if (res.status === 429) throw Object.assign(new Error('Лимит запросов — подождите минуту'), { code: 'rate_limited' });
         throw new Error('Ошибка API ' + res.status + ': ' + m);
       }
-      const text = p === 'anthropic' ? (j.content || []).filter(x => x.type === 'text').map(x => x.text).join('')
-        : ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '');
+      let text;
+      if (p === 'gemini') {
+        const cand = (j.candidates || [])[0];
+        text = cand && cand.content && (cand.content.parts || []).filter(x => x.text && !x.thought).map(x => x.text).join('');
+        if (!text) throw new Error('Модель не дала ответа' + (cand && cand.finishReason ? ' (' + cand.finishReason + ')' : j.promptFeedback ? ' (' + (j.promptFeedback.blockReason || 'заблокировано') + ')' : ''));
+      } else if (p === 'anthropic') text = (j.content || []).filter(x => x.type === 'text').map(x => x.text).join('');
+      else text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
       return { text: typeof text === 'string' ? text : JSON.stringify(text) };
     };
   }
@@ -1039,7 +1055,7 @@ ${header ? `<autoFilter ref="A1:${last}"/>` : ''}
   function applyCfg() {
     if (S.hostAi) return;
     const p = cfg.provider;
-    if (p !== 'local' && cfg[p] && cfg[p].key) { S.ai = makeApiAi(cfg); S.aiImages = true; S.aiLabel = p === 'anthropic' ? 'Claude API' : (cfg[p].model || 'API'); }
+    if (p !== 'local' && cfg[p] && cfg[p].key) { S.ai = makeApiAi(cfg); S.aiImages = true; S.aiLabel = p === 'anthropic' ? 'Claude API' : p === 'gemini' ? 'Gemini' : (cfg[p].model || 'API'); }
     else { S.ai = null; S.aiImages = false; }
     setEngine();
   }
@@ -1050,7 +1066,7 @@ ${header ? `<autoFilter ref="A1:${last}"/>` : ''}
     $('apiFields').classList.toggle('hidden', p === 'local');
     if (p !== 'local') {
       const o = cfg[p] || {};
-      $('apiKey').value = o.key || ''; $('apiModel').value = o.model || PROV[p].model; $('apiBase').value = o.base || PROV[p].base;
+      $('apiKey').placeholder = p === 'gemini' ? 'AQ.… или AIza…' : 'sk-…'; $('apiKey').value = o.key || ''; $('apiModel').value = o.model || PROV[p].model; $('apiBase').value = o.base || PROV[p].base;
       $('apiModel').placeholder = p === 'openai' ? 'например, модель с поддержкой изображений' : PROV[p].model;
       $('apiState').textContent = 'Ключ хранится только на этом устройстве';
     }
