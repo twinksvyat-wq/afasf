@@ -2,14 +2,21 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	neturl "net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
+
+// Учитывает системный прокси (переменные HTTPS_PROXY) — удобно, если API доступен только через него.
+var apiClient = &http.Client{Timeout: 4 * time.Minute, Transport: &http.Transport{Proxy: http.ProxyFromEnvironment}}
 
 //go:embed index.html
 var page []byte
@@ -67,6 +74,49 @@ func main() {
 				}
 			}
 		}
+	})
+
+	// Прокси к API распознавания: окно приложения обходится без ограничений CORS.
+	mux.HandleFunc("/proxy", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method", http.StatusMethodNotAllowed)
+			return
+		}
+		if o := r.Header.Get("Origin"); o != "" && o != strings.TrimSuffix(url, "/") {
+			http.Error(w, "origin", http.StatusForbidden)
+			return
+		}
+		target := r.Header.Get("X-Target")
+		u, err := neturl.Parse(target)
+		local := err == nil && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost")
+		if err != nil || !(u.Scheme == "https" || (u.Scheme == "http" && local)) {
+			http.Error(w, "bad target", http.StatusBadRequest)
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 40<<20))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(body))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		for _, h := range []string{"Content-Type", "Authorization", "X-Api-Key", "Anthropic-Version", "Anthropic-Beta", "Anthropic-Dangerous-Direct-Browser-Access", "Http-Referer", "X-Title"} {
+			if v := r.Header.Get(h); v != "" {
+				req.Header.Set(h, v)
+			}
+		}
+		resp, err := apiClient.Do(req)
+		if err != nil {
+			http.Error(w, "upstream: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
 	})
 
 	go http.Serve(ln, mux)
