@@ -1,4 +1,5 @@
 import SwiftUI
+import FightCore
 
 struct FightView: View {
     @EnvironmentObject var core: GameCore
