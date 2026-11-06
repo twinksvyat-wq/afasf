@@ -1,0 +1,78 @@
+name: iOS build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust tests
+        working-directory: core
+        run: cargo test --release
+      - name: C ABI check
+        working-directory: core
+        run: |
+          cargo build --release --lib
+          gcc -O1 -Iinclude ctest/abi_test.c target/release/libfightcore.a -lpthread -ldl -lm -o abi_test
+          ./abi_test
+
+  ios:
+    runs-on: macos-15
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          brew install xcodegen
+          rustup update stable
+          rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+          xcodebuild -version
+
+      - name: Build Rust core → FightCore.xcframework
+        run: ios/scripts/build_rust.sh
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build for Simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project WhiteoutFC.xcodeproj -scheme WhiteoutFC -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/sim SKIP_RUST_BUILD=1 CODE_SIGNING_ALLOWED=NO build | tail -n 60
+
+      - name: Build for device (unsigned)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project WhiteoutFC.xcodeproj -scheme WhiteoutFC -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device SKIP_RUST_BUILD=1 \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -n 60
+
+      - name: Package
+        working-directory: ios
+        run: |
+          APP=$(find build/device -name 'WhiteoutFC.app' -path '*Release-iphoneos*' | head -1)
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          (cd dist && zip -qr WhiteoutFC-unsigned.ipa Payload)
+          SIM=$(find build/sim -name 'WhiteoutFC.app' -path '*Release-iphonesimulator*' | head -1)
+          (cd "$(dirname "$SIM")" && zip -qr "$GITHUB_WORKSPACE/ios/dist/WhiteoutFC-simulator.zip" WhiteoutFC.app)
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WhiteoutFC-unsigned-ipa
+          path: ios/dist/WhiteoutFC-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WhiteoutFC-simulator-app
+          path: ios/dist/WhiteoutFC-simulator.zip

@@ -1,0 +1,4 @@
+module FightCore {
+    header "fightcore.h"
+    export *
+}

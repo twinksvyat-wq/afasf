@@ -1,0 +1,8 @@
+core/target/
+ios/Frameworks/
+ios/build/
+ios/dist/
+ios/WhiteoutFC.xcodeproj/
+*.rgb
+.DS_Store
+xcuserdata/

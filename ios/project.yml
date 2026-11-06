@@ -1,0 +1,38 @@
+name: WhiteoutFC
+options:
+  bundleIdPrefix: com.whiteoutfc
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  WhiteoutFC:
+    type: application
+    scheme: {}
+    platform: iOS
+    sources:
+      - path: WhiteoutFC
+    dependencies:
+      - framework: Frameworks/FightCore.xcframework
+        embed: false
+    preBuildScripts:
+      - name: Build Rust core
+        script: |
+          if [ "${SKIP_RUST_BUILD}" != "1" ]; then
+            "${PROJECT_DIR}/scripts/build_rust.sh"
+          fi
+        basedOnDependencyAnalysis: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.whiteoutfc.game
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: WhiteoutFC/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        OTHER_LDFLAGS: ["-lc++"]
+        ENABLE_BITCODE: NO
+        DEAD_CODE_STRIPPING: YES
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
